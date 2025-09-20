@@ -36,7 +36,7 @@ const alertSchema = new mongoose.Schema({
 });
 const Alert = mongoose.model("Alert", alertSchema);
 
-// ✅ Register User
+// Register User
 app.post("/api/register", async (req, res) => {
     const { name, phone } = req.body;
     const digitalID = crypto.randomBytes(8).toString("hex"); // Mock blockchain ID
@@ -45,7 +45,7 @@ app.post("/api/register", async (req, res) => {
     res.json({ success: true, digitalID });
 });
 
-// ✅ Panic/Geo-fence Alert
+// Panic/Geo-fence Alert
 app.post("/api/alert", async (req, res) => {
     const { userID, type, location } = req.body;
     const newAlert = new Alert({ userID, type, location });
@@ -53,13 +53,13 @@ app.post("/api/alert", async (req, res) => {
     res.json({ success: true, message: "Alert received" });
 });
 
-// ✅ Fetch Alerts (for Dashboard)
+// Fetch Alerts (for Dashboard)
 app.get("/api/alerts", async (req, res) => {
     const alerts = await Alert.find().sort({ timestamp: -1 });
     res.json(alerts);
 });
 
-// ✅ Root Check
+//  Root Check
 app.get("/", (req, res) => {
     res.send("Suraksha Backend Running ✅");
 });
