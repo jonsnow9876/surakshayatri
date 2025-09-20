@@ -353,7 +353,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _geofenceCenter.latitude, _geofenceCenter.longitude);
     final inside = distance <= _geofenceRadius;
     if (inside != _insideGeofence) {
-      // state changed
+      // State changed
       _insideGeofence = inside;
       _showGeofenceAlert(_insideGeofence);
     }
