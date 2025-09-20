@@ -2,19 +2,75 @@
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Tech Stack](#tech-stack)
-3. [Project Structure](#project-structure)
-4. [Database Models](#database-models)
-5. [API Endpoints](#api-endpoints)
+1. [Setup Instructions](#setup-instructions)
+2. [Overview](#overview)
+3. [Tech Stack](#tech-stack)
+4. [Project Structure](#project-structure)
+5. [Database Models](#database-models)
+6. [API Endpoints](#api-endpoints)
 
    * [Tourist Registration](#tourist-registration)
    * [Itinerary Update](#itinerary-update)
    * [Panic Alert](#panic-alert)
    * [Alerts](#alerts)
-6. [Blockchain Integration](#blockchain-integration)
-7. [Workflow](#workflow)
-8. [Notes](#notes)
+7. [Blockchain Integration](#blockchain-integration)
+8. [Workflow](#workflow)
+9. [Notes](#notes)
+
+---
+
+## Setup Instructions
+
+Follow these steps to set up and run the SurakshaYatri backend locally in **VSCode**:
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd backend
+```
+
+### 2. Create a Python Virtual Environment
+
+```bash
+python3 -m venv venv
+```
+
+Activate the virtual environment:
+
+* **Windows (Powershell)**:
+
+```powershell
+venv\Scripts\activate.ps1
+```
+
+* **Linux/macOS**:
+
+```bash
+source venv/bin/activate
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+### 4. Run the FastAPI Server
+
+```bash
+uvicorn main:app --reload
+```
+
+* Open in browser: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) to view the Swagger UI.
+
+### 7. VSCode Development Tips
+
+* Install **Python** and **Pylance** extensions.
+* Set interpreter to the virtual environment: `Ctrl+Shift+P → Python: Select Interpreter`.
+* Enable auto-reload (`--reload`) while running with Uvicorn.
+* Use **Breakpoints** in VSCode for debugging.
 
 ---
 
@@ -59,6 +115,16 @@ backend/
 └── data/
     └── blockchain.json      # Blockchain storage
 ```
+
+---
+
+*(The rest of your documentation — Database Models, API Endpoints, Blockchain Integration, Workflow, Notes — stays the same.)*
+
+---
+
+If you want, I can also add a **one-line VSCode launch configuration** so you can just press **F5** to start the FastAPI server with auto-reload inside VSCode. This makes local development much smoother.
+
+Do you want me to add that too?
 
 ---
 
