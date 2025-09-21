@@ -1,4 +1,4 @@
-// js/dashboard.js
+// js/dashboard.js - CORRECTED VERSION
 // Ensure Leaflet assets are loaded in dashboard.html before this script.
 let map;
 const markers = {}; // tempid -> Leaflet marker
@@ -42,13 +42,13 @@ function updateAlerts(alerts) {
     const ts = a?.timestamp || '';
     const resolved = Boolean(a?.resolved);
 
-    // Table row
+    // Table row - FIXED: Combined Lat/Lon into one column to match HTML header
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${id}</td>
       <td>${ts}</td>
-      <td>${isFinite(lat) && isFinite(lon) ? `${lat.toFixed(5)}, ${lon.toFixed(5)}` : '—'}</td>
-      <td>${resolved ? 'Yes' : 'No'}</td>
+      <td>${isFinite(lat) && isFinite(lon) ? `${lat.toFixed(5)}` : '—'}</td>
+      <td>${isFinite(lat) && isFinite(lon) ? `${lon.toFixed(5)}` : '—'}</td>
     `;
     tbody.appendChild(tr);
 
@@ -79,4 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchAlerts();
   // Auto-refresh every 15s; adjust as needed.
   setInterval(fetchAlerts, 15000);
+
+  // Add manual refresh button functionality
+  const refreshBtn = document.getElementById('refreshBtn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', fetchAlerts);
+  }
 });
