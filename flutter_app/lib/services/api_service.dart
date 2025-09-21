@@ -53,7 +53,7 @@ class ApiService {
     }
   }
 
-  // Submit report (attempt backend if route exists, otherwise throw)
+  // Submit report (POST /reports/)
   Future<void> submitReport(String touristId, Report report) async {
     final url = Uri.parse('$base/reports/');
     try {
@@ -71,8 +71,29 @@ class ApiService {
     } on SocketException {
       throw Exception('Network error while submitting report.');
     } catch (e) {
-      // If backend doesn't provide /reports/ yet, rethrow and the UI will fallback
       rethrow;
+    }
+  }
+
+  // ===============================================================
+  // ## NEW METHOD ADDED BELOW ##
+  // ===============================================================
+
+  // Fetch reports for a specific tourist (GET /reports/{id})
+  Future<List<Report>> fetchReports(String touristId) async {
+    final url = Uri.parse('$base/reports/$touristId');
+    final response = await http.get(
+      url,
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      // Transform the list of json maps into a list of Report objects
+      return data.map((json) => Report.fromJson(json)).toList();
+    } else {
+      // If the server did not return a 200 OK response, throw an exception.
+      throw Exception('Failed to load reports. Status code: ${response.statusCode}');
     }
   }
 }

@@ -1,8 +1,9 @@
 // lib/screens/dashboard_page.dart
+
+// 1. IMPORT the correct package
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
 import '../models/alert.dart';
 import '../services/location_service.dart';
@@ -17,9 +18,12 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final ApiService _api = ApiService();
   List<AlertModel> _alerts = [];
-  LatLng _center = LatLng(28.6139, 77.2090);
+  LatLng _center = const LatLng(28.6139, 77.2090); // Default center
   LatLng? _current;
   Timer? _poller;
+
+  // 2. ADD a controller for the map
+  final Completer<GoogleMapController> _controller = Completer();
 
   @override
   void initState() {
@@ -37,9 +41,15 @@ class _DashboardPageState extends State<DashboardPage> {
     final ok = await LocationService.ensurePermission();
     if (!ok) return;
     final pos = await LocationService.getCurrentPosition();
+
+    // Animate camera to new position
+    final GoogleMapController controller = await _controller.future;
+    controller.animateCamera(CameraUpdate.newCameraPosition(
+      CameraPosition(target: LatLng(pos.latitude, pos.longitude), zoom: 14.0),
+    ));
+
     setState(() {
       _current = LatLng(pos.latitude, pos.longitude);
-      _center = _current!;
     });
   }
 
@@ -61,51 +71,50 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _triggerPanic() async {
     final id = await Prefs.getTouristId();
     if (id == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Not registered')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Not registered')));
       return;
     }
     if (_current == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location not available')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location not available')));
       return;
     }
     try {
       await _api.triggerPanic(id, _current!.latitude, _current!.longitude);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Panic sent')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Panic sent')));
       await _loadAlerts();
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Panic failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Panic failed: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final markers = <Marker>[];
+    // 3. CREATE markers for Google Maps
+    final Set<Marker> markers = {};
     if (_current != null) {
-      markers.add(Marker(
-          point: _current!,
-          width: 40,
-          height: 40,
-          builder: (ctx) => const Icon(Icons.person_pin_circle,
-              size: 36, color: Colors.blue)));
+      markers.add(
+        Marker(
+          markerId: const MarkerId('currentUser'),
+          position: _current!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure), // Different icon for user
+        ),
+      );
     }
+    // Note: You would also add markers for your alerts here
+
     return Scaffold(
       appBar: AppBar(title: const Text('Dashboard')),
       body: Column(
         children: [
           Expanded(
             flex: 3,
-            child: FlutterMap(
-              options: MapOptions(center: _center, zoom: 13),
-              children: [
-                TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
-                MarkerLayer(markers: markers),
-              ],
+            // 4. USE the GoogleMap widget
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(target: _center, zoom: 13),
+              markers: markers,
+              onMapCreated: (GoogleMapController controller) {
+                _controller.complete(controller);
+              },
             ),
           ),
           Expanded(
@@ -117,9 +126,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     itemBuilder: (ctx, i) {
                       final a = _alerts[i];
                       return ListTile(
-                        leading: Icon(
-                            a.resolved ? Icons.check_circle : Icons.warning,
-                            color: a.resolved ? Colors.green : Colors.red),
+                        leading: Icon(a.resolved ? Icons.check_circle : Icons.warning, color: a.resolved ? Colors.green : Colors.red),
                         title: Text(a.message),
                         subtitle: Text(a.timestamp),
                       );
@@ -136,15 +143,9 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       drawer: Drawer(
         child: ListView(children: [
-          ListTile(
-              title: const Text('Profile'),
-              onTap: () => Navigator.pushNamed(context, '/profile')),
-          ListTile(
-              title: const Text('Report'),
-              onTap: () => Navigator.pushNamed(context, '/report')),
-          ListTile(
-              title: const Text('Reports'),
-              onTap: () => Navigator.pushNamed(context, '/reports')),
+          ListTile(title: const Text('Profile'), onTap: () => Navigator.pushNamed(context, '/profile')),
+          ListTile(title: const Text('Report'), onTap: () => Navigator.pushNamed(context, '/report')),
+          ListTile(title: const Text('Reports'), onTap: () => Navigator.pushNamed(context, '/reports')),
         ]),
       ),
     );

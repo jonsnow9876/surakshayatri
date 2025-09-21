@@ -1,25 +1,23 @@
+// lib/models/tourist.dart
 class Tourist {
-  final String permanentId;
-  final String tempId;
+  final String id;
   final String name;
-  final String phone;
-  final String email;
+  final String? phone;
+  final String? email;
 
   Tourist({
-    required this.permanentId,
-    required this.tempId,
+    required this.id,
     required this.name,
-    required this.phone,
-    required this.email,
+    this.phone,
+    this.email,
   });
 
   factory Tourist.fromJson(Map<String, dynamic> json) {
     return Tourist(
-      permanentId: json['permanent_id'],
-      tempId: json['temp_id'],
-      name: json['name'],
-      phone: json['phone'],
-      email: json['email'],
+      id: json['id']?.toString() ?? json['permanent_id']?.toString() ?? '',
+      name: json['name'] ?? json['profile_name'] ?? '',
+      phone: json['phone'] ?? json['profile_phone'],
+      email: json['email'] ?? json['profile_email'],
     );
   }
 }
