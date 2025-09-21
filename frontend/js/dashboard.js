@@ -1,7 +1,5 @@
-// js/dashboard.js - CORRECTED VERSION
-// Ensure Leaflet assets are loaded in dashboard.html before this script.
 let map;
-const markers = {}; // tempid -> Leaflet marker
+const markers = {}; // alert_uuid -> Leaflet marker
 
 function ensureMap() {
   if (!map) {
@@ -15,57 +13,68 @@ function ensureMap() {
 
 async function fetchAlerts() {
   try {
-    const res = await fetch('/alerts?unresolved_only=false');
+    const res = await fetch('/alerts/?unresolved_only=false'); // fetch all alerts
     if (!res.ok) throw new Error(`Failed to fetch alerts: ${res.status}`);
-    const alerts = await res.json(); // [{ alertuuid, tempid, lat, lon, timestamp, resolved, ... }]
-    updateAlerts(alerts || []);
+    const alerts = await res.json();
+
+    console.log("Fetched alerts:", alerts);
+
+    if (!Array.isArray(alerts)) return console.error("Expected an array of alerts");
+
+    updateAlerts(alerts);
   } catch (err) {
-    console.error(err);
+    console.error("Error fetching alerts:", err);
   }
 }
 
 function updateAlerts(alerts) {
   const table = document.getElementById('alertsTable');
-  if (!table) {
-    console.error('Missing #alertsTable');
-    return;
-  }
-  const tbody = table.querySelector('tbody') || table.createTBody();
+  if (!table) return console.error('Missing #alertsTable');
+
+  const tbody = table.querySelector('tbody');
   tbody.innerHTML = '';
 
   const seen = new Set();
 
-  alerts.forEach(a => {
-    const id = a?.tempid || 'unknown';
-    const lat = Number(a?.lat);
-    const lon = Number(a?.lon);
-    const ts = a?.timestamp || '';
-    const resolved = Boolean(a?.resolved);
+  alerts.forEach(alert => {
+    const alertId = alert.alert_uuid;
+    const tempId = alert.temp_id;
+    const lat = alert.lat != null ? Number(alert.lat) : null;
+    const lon = alert.lon != null ? Number(alert.lon) : null;
+    const ts = alert.timestamp ? new Date(alert.timestamp).toLocaleString() : '';
+    const resolved = Boolean(alert.resolved);
 
-    // Table row - FIXED: Combined Lat/Lon into one column to match HTML header
+    // Table row
     const tr = document.createElement('tr');
+    if (resolved) tr.classList.add('table-success');
+
     tr.innerHTML = `
-      <td>${id}</td>
+      <td>${tempId}</td>
       <td>${ts}</td>
-      <td>${isFinite(lat) && isFinite(lon) ? `${lat.toFixed(5)}` : '—'}</td>
-      <td>${isFinite(lat) && isFinite(lon) ? `${lon.toFixed(5)}` : '—'}</td>
+      <td>${lat != null ? lat.toFixed(5) : '—'}</td>
+      <td>${lon != null ? lon.toFixed(5) : '—'}</td>
     `;
     tbody.appendChild(tr);
 
-    // Marker
-    if (isFinite(lat) && isFinite(lon)) {
-      if (markers[id]) {
-        markers[id].setLatLng([lat, lon]);
+    // Map marker
+    if (lat != null && lon != null && !(lat === 0 && lon === 0)) {
+      if (markers[alertId]) {
+        markers[alertId].setLatLng([lat, lon]);
+        markers[alertId].setPopupContent(
+          `<b>Temp ID:</b> ${tempId}<br/><b>Time:</b> ${ts}<br/><b>Resolved:</b> ${resolved ? 'Yes' : 'No'}`
+        );
       } else {
-        const m = L.marker([lat, lon]).addTo(map);
-        m.bindPopup(`<b>Temp ID:</b> ${id}<br/><b>Time:</b> ${ts}<br/><b>Resolved:</b> ${resolved ? 'Yes' : 'No'}`);
-        markers[id] = m;
+        const marker = L.marker([lat, lon]).addTo(map);
+        marker.bindPopup(
+          `<b>Temp ID:</b> ${tempId}<br/><b>Time:</b> ${ts}<br/><b>Resolved:</b> ${resolved ? 'Yes' : 'No'}`
+        );
+        markers[alertId] = marker;
       }
-      seen.add(id);
+      seen.add(alertId);
     }
   });
 
-  // Cleanup stale markers
+  // Remove stale markers
   Object.keys(markers).forEach(id => {
     if (!seen.has(id)) {
       map.removeLayer(markers[id]);
@@ -77,12 +86,8 @@ function updateAlerts(alerts) {
 document.addEventListener('DOMContentLoaded', () => {
   ensureMap();
   fetchAlerts();
-  // Auto-refresh every 15s; adjust as needed.
   setInterval(fetchAlerts, 15000);
 
-  // Add manual refresh button functionality
   const refreshBtn = document.getElementById('refreshBtn');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', fetchAlerts);
-  }
+  if (refreshBtn) refreshBtn.addEventListener('click', fetchAlerts);
 });

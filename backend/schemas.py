@@ -17,6 +17,11 @@ class TouristRegisterResponse(BaseModel):
     temp_id: str          # temporary anonymized ID
     qr_code_base64: str   # QR code for temp_id
 
+# ---------- Schema for updating itinerary ----------
+class UpdateItineraryRequest(BaseModel):
+    tourist_id: str
+    itinerary: str
+
 # --------------------------
 # Panic Alert
 # --------------------------

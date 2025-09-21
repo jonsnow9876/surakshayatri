@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Tourist
-from schemas import TouristRegisterRequest, TouristRegisterResponse
+from schemas import TouristRegisterRequest, TouristRegisterResponse, UpdateItineraryRequest
 from pydantic import BaseModel
 import uuid, qrcode, base64
 from io import BytesIO
@@ -18,7 +18,7 @@ def generate_qr_code(tourist_id: str) -> str:
     img = qr.make_image(fill_color="black", back_color="white").get_image()
     buffered = BytesIO()
     img.save(buffered, format="PNG")
-    return "data:image/png;base64," + base64.b64encode(buffered.getvalue()).decode()
+    return base64.b64encode(buffered.getvalue()).decode()
 
 
 # -------------------------------
@@ -62,11 +62,6 @@ def register_new_tourist(request: TouristRegisterRequest, db: Session = Depends(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ---------- Schema for updating itinerary ----------
-class UpdateItineraryRequest(BaseModel):
-    tourist_id: str
-    itinerary: str
 
 
 # -------------------------------

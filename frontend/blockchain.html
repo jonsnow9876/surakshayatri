@@ -8,6 +8,7 @@
 <link href="css/style.css" rel="stylesheet">
 </head>
 <body>
+
 <nav class="navbar navbar-expand navbar-dark bg-primary mb-3">
   <div class="container">
     <a class="navbar-brand" href="index.html">Suraksha Yatri</a>
@@ -22,7 +23,13 @@
   <div class="card">
     <div class="card-body">
       <h5>Blockchain</h5>
+
+      <!-- Blockchain verification status -->
+      <div id="blockchainStatus" class="mb-3 fw-bold"></div>
+
+      <!-- Blocks will render here -->
       <div id="blocks"></div>
+
       <button id="loadBtn" class="btn btn-secondary btn-sm mt-3">Reload</button>
     </div>
   </div>
