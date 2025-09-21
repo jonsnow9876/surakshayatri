@@ -1,0 +1,4 @@
+/* style.css - small additions */
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+#qrImage img { max-width: 320px; height: auto; border: 1px solid #ddd; padding: 8px; background: #fff; }
+.card { border-radius: 0.6rem; }
