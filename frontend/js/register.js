@@ -1,65 +1,84 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('registerForm');
-  const qrArea = document.getElementById('qrArea');
-  const qrImage = document.getElementById('qrImage');
-  const regMsg = document.getElementById('regMsg');
-  const submitBtn = form.querySelector('button[type="submit"]');
+  // --- Get references to all necessary DOM elements ---
+  const registerForm = document.getElementById('registerForm');
+  const submitButton = document.getElementById('submitBtn');
+  const messageArea = document.getElementById('messageArea');
+  const qrCodeArea = document.getElementById('qrCodeArea');
+  const qrCodeImage = document.getElementById('qrCodeImage');
 
-  form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
+  // --- Safety check: ensure all elements exist before adding listeners ---
+  if (!registerForm || !submitButton || !messageArea || !qrCodeArea || !qrCodeImage) {
+    console.error('Fatal Error: One or more required HTML elements are missing from the page.');
+    return;
+  }
 
-    // Reset UI
-    regMsg.textContent = '';
-    qrArea.style.display = 'none';
-    qrImage.innerHTML = '';
+  registerForm.addEventListener('submit', async (event) => {
+    // Prevent the default form submission which reloads the page
+    event.preventDefault();
 
-    // Disable button during request
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Registering...';
+    // --- 1. Reset the UI for a new submission ---
+    messageArea.textContent = '';
+    messageArea.className = 'alert'; // Reset any success/danger classes
+    qrCodeArea.style.display = 'none';
+    qrCodeImage.src = '';
 
-    const fd = new FormData(form);
+    // --- 2. Provide user feedback during the process ---
+    submitButton.disabled = true;
+    submitButton.textContent = 'Registering...';
+
+    // --- 3. Prepare the data to be sent to the API ---
+    const formData = new FormData(registerForm);
     const payload = {
-      name: fd.get('name'),
-      passport: fd.get('passport'),
-      itinerary: fd.get('itinerary') || null,
-      emergency_contact: fd.get('emergency_contact')
+      name: formData.get('name'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      passport: formData.get('passport'),
+      password: formData.get('password'),
+      itinerary: formData.get('itinerary') || null // Send null if empty
     };
 
     try {
-      const res = await fetch('/register/new', {
+      // --- 4. Send the request to the backend ---
+      const response = await fetch('/register/new', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      const data = await res.json();
+      const data = await response.json();
 
-      if (!res.ok) {
-        const msg = data?.detail || `Server returned ${res.status}`;
-        regMsg.textContent = `Registration failed: ${msg}`;
-        return;
+      // --- 5. Handle potential errors from the server ---
+      if (!response.ok) {
+        // Use the server's error message if available, otherwise use a generic one
+        const errorMessage = data.detail || `Server returned an error: ${response.status}`;
+        throw new Error(errorMessage);
       }
 
-      // Success: show QR
-      if (data?.qr_code_base64) {
-        const img = document.createElement('img');
-        img.alt = 'Registration QR';
-        img.src = `data:image/png;base64,${data.qr_code_base64}`;
-        qrImage.appendChild(img);
-        qrArea.style.display = 'block';
-      }
+      // --- 6. Handle the success case ---
+      messageArea.className = 'alert alert-success';
+      messageArea.innerHTML = `
+        <strong>Registration Successful!</strong><br>
+        Your details are secure. Save this QR to use in the mobile app.<br><br>
+        <strong>Tourist ID:</strong> <code>${data.tourist_id}</code><br>
+        <strong>Temporary ID:</strong> <code>${data.temp_id}</code>
+      `;
 
-      regMsg.innerHTML = `Registered successfully.<br>
-        Tourist ID: <code>${data?.tourist_id ?? 'N/A'}</code><br>
-        Temp ID: <code>${data?.temp_id ?? 'N/A'}</code>`;
-      form.reset();
+      // Display the QR code image received from the server
+      qrCodeImage.src = `data:image/png;base64,${data.qr_code_base64}`;
+      qrCodeArea.style.display = 'block';
 
-    } catch (err) {
-      console.error(err);
-      regMsg.textContent = 'Registration failed: could not reach the server.';
+      registerForm.reset(); // Clear the form fields
+
+    } catch (error) {
+      // --- 7. Handle network errors or server errors ---
+      console.error('Registration failed:', error);
+      messageArea.className = 'alert alert-danger';
+      messageArea.textContent = `Error: ${error.message}`;
+
     } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Register & Generate QR';
+      // --- 8. Always re-enable the button after the process is complete ---
+      submitButton.disabled = false;
+      submitButton.textContent = 'Register & Generate QR';
     }
   });
 });
