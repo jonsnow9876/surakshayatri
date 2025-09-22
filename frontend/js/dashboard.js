@@ -1,4 +1,3 @@
-const API_HOST = 'http://localhost:8001'; // Backend host
 let map;
 const markers = {};
 
@@ -25,26 +24,30 @@ function processAndConsolidateAlerts(rawAlerts) {
     return Array.from(alertsMap.values());
 }
 
-/** Fetch alerts from API */
+/** Fetch alerts from API (relative path) */
 async function fetchAlerts() {
     try {
-        const filter = document.getElementById('resolvedFilter').value;
+        const filter = document.getElementById('resolvedFilter')?.value;
         let path = '/alerts/';
         if (filter === 'unresolved') path = '/alerts/?unresolved_only=true';
         if (filter === 'resolved') path = '/alerts/?resolved_only=true';
-        const url = `${API_HOST}${path}`;
 
-        const res = await fetch(url);
+        const res = await fetch(path);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
         const rawData = await res.json();
         if (!Array.isArray(rawData)) throw new Error("Invalid API response");
 
         const alerts = processAndConsolidateAlerts(rawData);
         updateDashboard(alerts);
     } catch (err) {
-        console.error(err);
+        console.error('Failed to fetch alerts:', err);
         const tbody = document.getElementById('alertsTableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Failed to load alerts.</td></tr>`;
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">
+                Failed to load alerts.
+            </td></tr>`;
+        }
     }
 }
 
@@ -59,6 +62,10 @@ function updateDashboard(alerts) {
 
     if (alerts.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center">No alerts found.</td></tr>`;
+        Object.keys(markers).forEach(id => {
+            mapInstance.removeLayer(markers[id]);
+            delete markers[id];
+        });
         return;
     }
 
@@ -71,7 +78,9 @@ function updateDashboard(alerts) {
         const displayLon = lon != null ? Number(lon).toFixed(5) : '—';
         const time = timestamp ? new Date(timestamp).toLocaleString() : '—';
         const status = resolved ? 'Resolved' : 'Unresolved';
-        const actionButton = !resolved ? `<button class="btn btn-sm btn-success" onclick="resolveAlert('${alert_uuid}')">Resolve</button>` : '—';
+        const actionButton = !resolved
+            ? `<button class="btn btn-sm btn-success" onclick="resolveAlert('${alert_uuid}')">Resolve</button>`
+            : '—';
 
         tr.innerHTML = `
             <td>${temp_id || '—'}</td>
@@ -95,8 +104,7 @@ function updateDashboard(alerts) {
             if (markers[alert_uuid]) {
                 markers[alert_uuid].setLatLng([lat, lon]).setPopupContent(popup);
             } else {
-                const marker = L.marker([lat, lon]).addTo(mapInstance).bindPopup(popup);
-                markers[alert_uuid] = marker;
+                markers[alert_uuid] = L.marker([lat, lon]).addTo(mapInstance).bindPopup(popup);
             }
             seen.add(alert_uuid);
         }
@@ -110,18 +118,40 @@ function updateDashboard(alerts) {
     });
 }
 
-/** Placeholder resolve function */
-function resolveAlert(alertId) {
-    if (!confirm(`Resolve alert ${alertId}?`)) return;
-    alert(`Demo: would call API to resolve ${alertId}`);
-    fetchAlerts();
+/** Resolve an alert by its ID */
+async function resolveAlert(alertId) {
+    if (!confirm(`Are you sure you want to resolve this alert?`)) return;
+
+    try {
+        const resolvedBy = prompt("Enter your name or ID for resolution log:", "dashboard_user");
+        if (!resolvedBy) return;
+
+        const url = `/alerts/${alertId}/resolve?resolved_by=${encodeURIComponent(resolvedBy)}`;
+
+        const res = await fetch(url, {
+            method: "PATCH", // ✅ CHANGED FROM POST TO PATCH
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || `Failed to resolve. HTTP ${res.status}`);
+        }
+
+        console.log("Alert resolved successfully:", await res.json());
+        fetchAlerts();
+    } catch (err) {
+        console.error("Error resolving alert:", err);
+        alert(`Failed to resolve alert: ${err.message}`);
+    }
 }
+
 
 // --- Initialize dashboard ---
 document.addEventListener('DOMContentLoaded', () => {
     ensureMap();
     fetchAlerts();
-    setInterval(fetchAlerts, 30000);
+    setInterval(fetchAlerts, 15000);
     document.getElementById('refreshBtn')?.addEventListener('click', fetchAlerts);
     document.getElementById('resolvedFilter')?.addEventListener('change', fetchAlerts);
 });

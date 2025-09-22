@@ -134,7 +134,7 @@
       jsonPreview.textContent = JSON.stringify(panicData, null, 2);
 
       try {
-        const res = await fetch('http://localhost:8001/panic/', {
+        const res = await fetch('/panic/', {
           method: 'POST',
           headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
           body: JSON.stringify(panicData)
