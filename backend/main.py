@@ -29,7 +29,7 @@ app.mount("/js", StaticFiles(directory=os.path.join(frontend_path, "js")), name=
 # Serve index.html as root
 @app.get("/")
 async def serve_index():
-    return FileResponse(os.path.join(frontend_path, "register.html"))
+    return FileResponse(os.path.join(frontend_path, "index.html"))
 
 # Optional: serve other HTML files by filename (dashboard.html, blockchain.html)
 @app.get("/{page_name}")

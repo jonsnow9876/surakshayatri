@@ -9,4 +9,5 @@
 **/*.pyo
 
 ## Ignore the database file
-/backend/data/*
+/backend/data/app.db
+/backend/data/blockchain.json
