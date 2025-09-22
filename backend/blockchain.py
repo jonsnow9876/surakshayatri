@@ -21,6 +21,7 @@ def _create_genesis_block() -> dict:
     block_dict = {
         "index": 0,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "type": "genesis",          # added type field
         "data": "genesis",
         "prev_hash": "0"
     }
@@ -59,12 +60,17 @@ def load_chain() -> dict:
 
 
 # ---------- Add New Block ----------
-def add_block(data: dict) -> dict:
+def add_block(data: dict, block_type: str = "issue") -> dict:
+    """
+    Add a new block to the chain.
+    block_type: 'issue', 'resolution', or 'other' (default 'issue')
+    """
     chain = load_chain()
     last = chain["chain"][-1]
     block_dict = {
         "index": last["index"] + 1,
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "type": block_type,        # added type field
         "data": data,
         "prev_hash": last["hash"]
     }
@@ -83,5 +89,6 @@ if __name__ == "__main__":
         "lat": 0.0,
         "lon": 0.0,
         "message": "1234"
-    })
+    }, block_type="issue")  # default type is 'issue'
+
     print("New block added:", new_block)

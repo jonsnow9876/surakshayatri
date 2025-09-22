@@ -32,10 +32,11 @@ def _merge_alert_status(chain_alerts: List[Dict], db: Session) -> List[Dict]:
             "timestamp": block.get("timestamp"),
             "blockchain_index": block.get("index"),
             "blockchain_hash": block.get("hash"),
-            "resolved": status.resolved if status else False,
-            "resolved_at": status.resolved_at if status else None,
-            "resolved_by": status.resolved_by if status else None,
-            "message": data.get("message")
+            "resolved": status.resolved if status else data.get("resolved", False),
+            "resolved_at": status.resolved_at if status else data.get("resolved_at"),
+            "resolved_by": status.resolved_by if status else data.get("resolved_by"),
+            "message": data.get("message"),
+            "type": block.get("type")  # include block type
         })
 
     return merged
@@ -44,16 +45,22 @@ def _merge_alert_status(chain_alerts: List[Dict], db: Session) -> List[Dict]:
 @router.get("/", summary="Get all alerts")
 def get_all_alerts(
     unresolved_only: bool = Query(False, description="Return only unresolved alerts"),
+    include_resolution: bool = Query(False, description="Include resolution blocks in results"),
     db: Session = Depends(get_db)
 ) -> List[Dict]:
     """
-    Fetch all alerts from blockchain, optionally filtering unresolved ones.
+    Fetch all alerts from blockchain, optionally filtering unresolved ones and resolution blocks.
     """
     chain = load_chain()
     alerts = _merge_alert_status(chain.get("chain", []), db)
 
+    # Filter unresolved alerts
     if unresolved_only:
         alerts = [a for a in alerts if not a["resolved"]]
+
+    # Filter resolution blocks if not included
+    if not include_resolution:
+        alerts = [a for a in alerts if a["type"] != "resolution"]
 
     return alerts
 
@@ -62,17 +69,23 @@ def get_all_alerts(
 def get_alerts_by_tourist(
     temp_id: str,
     unresolved_only: bool = Query(False, description="Return only unresolved alerts"),
+    include_resolution: bool = Query(False, description="Include resolution blocks in results"),
     db: Session = Depends(get_db)
 ) -> List[Dict]:
     """
-    Fetch all alerts for a specific tourist temp_id.
+    Fetch all alerts for a specific tourist temp_id, optionally filtering unresolved ones and resolution blocks.
     """
     chain = load_chain()
     alerts = _merge_alert_status(chain.get("chain", []), db)
     alerts = [a for a in alerts if a["temp_id"] == temp_id]
 
+    # Filter unresolved alerts
     if unresolved_only:
         alerts = [a for a in alerts if not a["resolved"]]
+
+    # Filter resolution blocks if not included
+    if not include_resolution:
+        alerts = [a for a in alerts if a["type"] != "resolution"]
 
     return alerts
 
@@ -90,7 +103,7 @@ def resolve_alert(
     try:
         now = datetime.now(timezone.utc)
 
-        # --- 1️⃣ Update DB ---
+        # --- Update DB ---
         status: Optional[AlertStatus] = db.query(AlertStatus).filter(
             AlertStatus.alert_uuid == alert_uuid
         ).first()
@@ -111,10 +124,8 @@ def resolve_alert(
         db.commit()
         db.refresh(status)
 
-        # --- 2️⃣ Append resolution to blockchain ---
+        # --- Append resolution to blockchain ---
         chain = load_chain()
-
-        # Find original alert to get temp_id
         orig_alert = next(
             (b["data"] for b in chain.get("chain", [])
              if isinstance(b.get("data"), dict) and b["data"].get("alert_uuid") == alert_uuid),
@@ -130,7 +141,7 @@ def resolve_alert(
             "resolved_at": now.isoformat()
         }
 
-        new_block = add_block(resolution_data)  # single variable now
+        new_block = add_block(resolution_data, block_type="resolution")
 
         return {
             "alert_uuid": status.alert_uuid,

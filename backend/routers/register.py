@@ -3,14 +3,13 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Tourist
 from schemas import TouristRegisterRequest, TouristRegisterResponse, UpdateItineraryRequest
-from pydantic import BaseModel
-import uuid, qrcode, base64
+import uuid, qrcode, base64, hashlib
 from io import BytesIO
 import traceback
 
 router = APIRouter()
 
-# ---------- Helper: Generate QR code from tourist ID ----------
+# ---------- Helper: Generate QR code ----------
 def generate_qr_code(tourist_id: str) -> str:
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(tourist_id)
@@ -20,30 +19,38 @@ def generate_qr_code(tourist_id: str) -> str:
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
 
+# ---------- Helper: Hash password ----------
+def hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
-# -------------------------------
-# Route 1: Register a New Tourist
-# -------------------------------
+# ---------- Route: Register New Tourist ----------
 @router.post("/new", response_model=TouristRegisterResponse)
 def register_new_tourist(request: TouristRegisterRequest, db: Session = Depends(get_db)):
     try:
-        # Check if passport already exists
-        existing = db.query(Tourist).filter(Tourist.passport == request.passport).first()
+        # Check if passport or email already exists
+        existing = db.query(Tourist).filter(
+            (Tourist.passport == request.passport) | (Tourist.email == request.email)
+        ).first()
         if existing:
-            raise HTTPException(status_code=400, detail="Passport already registered")
+            raise HTTPException(status_code=400, detail="Passport or email already registered")
 
         # Generate IDs
         tourist_id = str(uuid.uuid4())
         temp_id = str(uuid.uuid4())  # temporary anonymized ID
 
+        # Hash the password
+        password_hash = hash_password(request.password)
+
         # Create new Tourist
         tourist = Tourist(
             id=tourist_id,
             name=request.name,
+            email=request.email,
+            phone=request.phone,
             passport=request.passport,
+            password=password_hash,
             temp_id=temp_id,
             itinerary=request.itinerary,
-            emergency_contact=request.emergency_contact
         )
 
         db.add(tourist)
@@ -63,10 +70,7 @@ def register_new_tourist(request: TouristRegisterRequest, db: Session = Depends(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-# -------------------------------
-# Route 2: Update Itinerary & Generate New temp_id
-# -------------------------------
+# ---------- Route: Update Itinerary & Generate New temp_id ----------
 @router.patch("/update_itinerary", response_model=TouristRegisterResponse)
 def update_itinerary(request: UpdateItineraryRequest, db: Session = Depends(get_db)):
     try:
